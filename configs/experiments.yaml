@@ -1,0 +1,51 @@
+# Central configuration for the experiments.
+# Notebooks and source code read these values instead of defining them directly.
+
+seed: 42
+
+# AI generators included in the dataset.
+generators:
+  - biggan
+  - glide
+  - vqdm
+  - sdv1_5
+  - adm
+  - midjourney
+  - wukong
+
+# Location of the raw GenImage data and mapping to generator folders.
+paths:
+  raw_data_root: "C:/Users/valen/OneDrive/Desktop/Dataset/archive"
+  generator_dirs:
+    biggan: imagenet_ai_0419_biggan
+    vqdm: imagenet_ai_0419_vqdm
+    sdv1_5: imagenet_ai_0424_sdv5
+    wukong: imagenet_ai_0424_wukong
+    adm: imagenet_ai_0508_adm
+    glide: imagenet_glide
+    midjourney: imagenet_midjourney
+
+# Number of AI and real images sampled for each generator.
+sample_size:
+  small: 1000
+  large: 4000
+  active_size: small
+
+# Preprocessing applied equally to real and AI images.
+preprocessing:
+  image_size: 224
+  color_mode: RGB
+  jpeg_quality: 90
+  strip_metadata: true
+
+# Train/validation/test split used when all generators are seen during training.
+standard_split:
+  train: 0.70
+  val: 0.15
+  test: 0.15
+
+# Leave-One-Generator-Out split.
+# The held-out generator is used only for testing.
+logo:
+  train: 0.80 
+  val: 0.20
