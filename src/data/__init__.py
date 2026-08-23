@@ -7,3 +7,14 @@ The package contains utilities for:
 - model definitions
 - training and evaluation
 """
+"""Dataset preparation and loading utilities."""
+
+from src.data.dataset import AIImageDataset, LABEL_TO_INDEX
+from src.data.loaders import build_image_transform, create_dataloaders
+
+__all__ = [
+    "AIImageDataset",
+    "LABEL_TO_INDEX",
+    "build_image_transform",
+    "create_dataloaders",
+]

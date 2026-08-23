@@ -80,15 +80,19 @@ This results in:
 | **Total** | **7,000** | **7,000** | **14,000** |
 
 Each generator is proportionally represented across the standard splits.
+Training and validation examples are sampled from the original Tiny-GenImage
+`train` folders. Test examples are sampled exclusively from the original
+`val` folders so the original train/validation boundary is not mixed.
 
 ## Dataset Preprocessing
 
 All images are processed using the same pipeline regardless of their source:
 
-1. Resize to `224 × 224`
+1. Apply the orientation stored in EXIF metadata
 2. Convert to RGB
-3. Remove image metadata
-4. Re-encode as JPEG with consistent quality
+3. Center-crop to a square and resize to `224 × 224`
+4. Remove image metadata
+5. Re-encode as JPEG with consistent quality
 
 This preprocessing is applied equally to real and AI-generated images.
 
@@ -112,6 +116,12 @@ duplicate images, and potential cross-source similarities.
 
 ### Baseline CNN
 
+The baseline is a four-stage CNN trained from scratch. Each stage uses a
+convolution, batch normalization, ReLU, and max pooling, followed by global
+average pooling, dropout, and one binary-classification logit. The reusable
+pipeline includes deterministic DataLoaders, validation-based early stopping,
+checkpointing, overall metrics, and per-generator evaluation.
+
 ### ResNet
 
 ### Vision Transformer
@@ -132,41 +142,34 @@ duplicate images, and potential cross-source similarities.
 
 ## Repository structure
 
-```
+```text
 robust-ai-image-detection/
-│
-├── data/
-│   ├── README.md
-│   └── dataset.csv
-│
-├── notebooks/
-│   ├── 01_dataset_preparation.ipynb
-│   ├── 02_dataset_analysis.ipynb
-│   ├── 03_baseline_cnn.ipynb
-│   ├── 04_resnet.ipynb
-│   ├── 05_vit.ipynb
-│   ├── 06_leave_one_generator_out.ipynb
-│   ├── 07_frequency_analysis.ipynb
-│   ├── 08_explainability.ipynb
-│   └── 09_final_comparison.ipynb
-│
-├── src/
-│   ├── data/
-│   ├── models/
-│   ├── training/
-│   └── evaluation/
-│
-├── configs/
-│   └── experiments.yaml
-│
-├── results/
-│   ├── figures/
-│   ├── metrics/
-│   └── confusion_matrices/
-│
-├── models/
-│
-└── requirements.txt
+|-- configs/
+|   `-- experiments.yaml
+|-- data/
+|   |-- README.md
+|   |-- raw/                       # local, ignored by Git
+|   |-- processed/                 # local, ignored by Git
+|   `-- dataset.csv                # local, ignored by Git
+|-- notebooks/
+|   |-- 01_dataset_preparation.ipynb
+|   |-- 02_dataset_analysis.ipynb
+|   `-- 03_baseline_cnn.ipynb
+|-- results/
+|   `-- figures/
+|-- src/
+|   |-- data/
+|   |   |-- config.py
+|   |   |-- dataset.py
+|   |   |-- loaders.py
+|   |   `-- standardize.py
+|   |-- evaluation/
+|   |   `-- classification.py
+|   |-- models/
+|   |   `-- baseline_cnn.py
+|   `-- training/
+|       `-- engine.py
+`-- requirements.txt
 ```
 
 **Notebooks:**
@@ -175,6 +178,7 @@ robust-ai-image-detection/
 |---|---|
 | `01_dataset_preparation.ipynb` | Sample and standardize the GenImage subset and build the dataset table |
 | `02_dataset_analysis.ipynb` | Explore class balance, generator distributions, image properties, duplicates, and visual differences |
+| `03_baseline_cnn.ipynb` | Train, validate, and evaluate the baseline CNN |
 
 ## Installation
 
@@ -185,4 +189,14 @@ pip install -r requirements.txt
 ```
 
 ## Running the project
+
+1. Extract Tiny-GenImage so its seven generator folders are directly under
+   `data/raw/` as described in `data/README.md`.
+2. Run `notebooks/01_dataset_preparation.ipynb` to create standardized images
+   and `data/dataset.csv`.
+3. Run `notebooks/02_dataset_analysis.ipynb` for dataset checks and EDA.
+4. Run `notebooks/03_baseline_cnn.ipynb` for the standard baseline experiment.
+
+Raw data, processed images, the manifest, virtual environments, and model
+checkpoints are excluded from Git.
 
