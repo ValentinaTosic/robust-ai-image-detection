@@ -5,14 +5,15 @@ artifacts. This dataset's raw images concretely have that problem: AI
 images are 128x128 PNG, real images are variable-size JPEG.
 
 Steps, applied the same way regardless of source:
-1. Resize to a fixed target resolution
+1. Apply the orientation stored in EXIF metadata
 2. Convert to a fixed RGB color mode
-3. Strip EXIF/metadata
-4. Re-encode with the same compression settings (JPEG)
+3. Center-crop to a square and resize to a fixed target resolution
+4. Strip EXIF/metadata
+5. Re-encode with the same compression settings (JPEG)
 """
 
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageOps
 
 
 class CorruptImageError(Exception):
@@ -34,8 +35,14 @@ def standardize_image(src_path: Path | str, dst_path: Path | str, image_size: in
     """
     try:
         with Image.open(src_path) as img:
+            img = ImageOps.exif_transpose(img)
             img = img.convert(color_mode)
-            img = img.resize((image_size, image_size), Image.BICUBIC) 
+            img = ImageOps.fit(
+                img,
+                (image_size, image_size),
+                method=Image.Resampling.BICUBIC,
+                centering=(0.5, 0.5),
+            )
             dst_path.parent.mkdir(parents=True, exist_ok=True)
             img.save(dst_path, format="JPEG", quality=jpeg_quality)
     except Exception as e:

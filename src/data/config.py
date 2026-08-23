@@ -35,6 +35,23 @@ def active_sample_size(config: dict) -> int:
     return config["sample_size"][size]
 
 
+def raw_data_root(config: dict) -> Path:
+    """Return the configured raw-data root as an absolute path.
+
+    Relative paths are resolved from the repository root so the same
+    configuration works regardless of where the repository is cloned or
+    where Python and Jupyter are started.
+
+    Args:
+        config: Loaded experiment configuration.
+
+    Returns:
+        Absolute path to the raw dataset root.
+    """
+    root: Path = Path(config["paths"]["raw_data_root"])
+    return root if root.is_absolute() else REPO_ROOT / root
+
+
 def raw_generator_dir(config: dict, generator: str) -> Path:
     """Return the path to a generator's raw data directory.
 
@@ -48,5 +65,5 @@ def raw_generator_dir(config: dict, generator: str) -> Path:
     Raises:
         KeyError: If the generator is not defined in the configuration.
     """
-    root: Path = Path(config["paths"]["raw_data_root"])
+    root: Path = raw_data_root(config)
     return root / config["paths"]["generator_dirs"][generator]

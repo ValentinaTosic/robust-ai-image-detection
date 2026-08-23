@@ -15,7 +15,7 @@ generators:
 
 # Location of the raw GenImage data and mapping to generator folders.
 paths:
-  raw_data_root: "C:/Users/valen/OneDrive/Desktop/Dataset/archive"
+  raw_data_root: "data/raw"
   generator_dirs:
     biggan: imagenet_ai_0419_biggan
     vqdm: imagenet_ai_0419_vqdm
@@ -49,3 +49,18 @@ standard_split:
 logo:
   train: 0.80 
   val: 0.20
+
+# DataLoader settings for local, reproducible notebook execution.
+dataloader:
+  batch_size: 32
+  num_workers: 0
+
+# Small CNN trained from scratch as the reference model.
+baseline_cnn:
+  channels: [32, 64, 128, 256]
+  dropout: 0.3
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  epochs: 20
+  early_stopping_patience: 5
+  early_stopping_min_delta: 0.0001

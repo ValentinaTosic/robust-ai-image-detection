@@ -34,34 +34,49 @@ The current configuration uses:
 - **7,000 real images**
 - **14,000 images in total**
 
-The real images are sampled from the available real-image pools and are
-treated as a single `real` source rather than being associated with a
-specific generator.
+The real images use the binary label and generator value `real`. Their original
+generator-folder pool is retained separately as `source_group` for auditing,
+balanced splitting, and later leave-one-generator-out experiments.
 
 ## Local setup
 
-The raw dataset is stored outside the repository and is read directly from
-disk during dataset preparation.
+Extract the dataset locally under `data/raw/`. The generator folders must be
+direct children of that directory, for example:
 
-Set the local dataset location in:
-
-`configs/experiments.yaml`
-
-under:
-
-```yaml
-paths:
-  raw_data_root: "path/to/dataset"
+```text
+data/raw/
+|-- imagenet_ai_0419_biggan/
+|-- imagenet_ai_0419_vqdm/
+|-- imagenet_ai_0424_sdv5/
+|-- imagenet_ai_0424_wukong/
+|-- imagenet_ai_0508_adm/
+|-- imagenet_glide/
+`-- imagenet_midjourney/
 ```
+
+The shared configuration uses the repository-relative path `data/raw`, so no
+user-specific path changes are required. The complete `data/raw` directory is
+ignored by Git.
 
 ## Expected local folder layout
 
 After running `notebooks/01_dataset_preparation.ipynb`, this directory should look like:
 
-```
+```text
 data/
-├── processed/                 # standardized images (resized, RGB, metadata stripped, re-encoded)
-│   ├── ai/                    
-│   └── real/
-└── dataset.csv                 # filename | label | generator | split | source_path — built by 01_dataset_preparation
+|-- raw/                        # local Tiny-GenImage files
+|-- processed/                  # center-cropped, 224x224 RGB JPEG images
+|   |-- ai/
+|   `-- real/
+|-- dataset.csv                 # built by notebook 01
+`-- README.md
 ```
+
+The manifest columns are:
+
+```text
+filename | label | generator | source_group | raw_split | split | source_path
+```
+
+`source_path` is relative to `data/raw`, which keeps the manifest portable
+between local repository clones.
