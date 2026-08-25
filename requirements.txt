@@ -1,0 +1,25 @@
+# Deep learning
+torch
+torchvision
+timm
+
+# Data and numerics
+numpy
+pandas
+pyyaml
+
+# Image processing
+pillow
+opencv-python
+ImageHash 
+
+# Visualization
+matplotlib
+seaborn
+
+# ML utilities / metrics
+scikit-learn
+
+# Notebooks
+jupyter
+ipykernel

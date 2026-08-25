@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dataset (never commit raw/processed images)
+data/*
+!data/README.md
+
+# Trained model checkpoints
+results/checkpoints/
+models/*.pth
+models/*.pt
+models/*.ckpt
+!models/README.md
+*.pth
+*.pt
+*.ckpt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

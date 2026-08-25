@@ -1,0 +1,77 @@
+# Central configuration for the experiments.
+# Notebooks and source code read these values instead of defining them directly.
+
+seed: 42
+
+# AI generators included in the dataset.
+generators:
+  - biggan
+  - glide
+  - vqdm
+  - sdv1_5
+  - adm
+  - midjourney
+  - wukong
+
+# Location of the raw GenImage data and mapping to generator folders.
+paths:
+  raw_data_root: "data/raw"
+  generator_dirs:
+    biggan: imagenet_ai_0419_biggan
+    vqdm: imagenet_ai_0419_vqdm
+    sdv1_5: imagenet_ai_0424_sdv5
+    wukong: imagenet_ai_0424_wukong
+    adm: imagenet_ai_0508_adm
+    glide: imagenet_glide
+    midjourney: imagenet_midjourney
+
+# Number of AI and real images sampled for each generator.
+sample_size:
+  small: 1000
+  large: 4000
+  active_size: small
+
+# Preprocessing applied equally to real and AI images.
+preprocessing:
+  image_size: 224
+  color_mode: RGB
+  jpeg_quality: 90
+  strip_metadata: true
+
+# Train/validation/test split used when all generators are seen during training.
+standard_split:
+  train: 0.70
+  val: 0.15
+  test: 0.15
+
+# Leave-One-Generator-Out split.
+# The held-out generator is used only for testing.
+logo:
+  train: 0.80 
+  val: 0.20
+
+# DataLoader settings for local, reproducible notebook execution.
+dataloader:
+  batch_size: 32
+  num_workers: 0
+
+# Small CNN trained from scratch as the reference model.
+baseline_cnn:
+  channels: [32, 64, 128, 256]
+  dropout: 0.3
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  epochs: 20
+  early_stopping_patience: 5
+  early_stopping_min_delta: 0.0001
+
+# ImageNet-pretrained ResNet18.
+# Training is done in two phases: frozen backbone warmup, then full fine-tuning.
+resnet:
+  warmup_epochs: 3
+  warmup_learning_rate: 0.001
+  finetune_epochs: 20
+  finetune_learning_rate: 0.00001
+  weight_decay: 0.0001
+  early_stopping_patience: 5
+  early_stopping_min_delta: 0.0001
