@@ -64,3 +64,14 @@ baseline_cnn:
   epochs: 20
   early_stopping_patience: 5
   early_stopping_min_delta: 0.0001
+
+# ImageNet-pretrained ResNet18.
+# Training is done in two phases: frozen backbone warmup, then full fine-tuning.
+resnet:
+  warmup_epochs: 3
+  warmup_learning_rate: 0.001
+  finetune_epochs: 20
+  finetune_learning_rate: 0.00001
+  weight_decay: 0.0001
+  early_stopping_patience: 5
+  early_stopping_min_delta: 0.0001
