@@ -124,6 +124,14 @@ checkpointing, overall metrics, and per-generator evaluation.
 
 ### ResNet
 
+An ImageNet-pretrained ResNet18 is fine-tuned in two phases: first with the
+backbone frozen and only the replaced classification head trained, then with
+the whole network unfrozen and trained at a much lower learning rate. Inputs
+are normalized with ImageNet statistics instead of the baseline's, since the
+pretrained weights expect that distribution. The same reusable training loop,
+early stopping, checkpointing, and evaluation pipeline as the baseline CNN are
+reused for a fair comparison.
+
 ### Vision Transformer
 
 ## Experimental setup
@@ -154,7 +162,8 @@ robust-ai-image-detection/
 |-- notebooks/
 |   |-- 01_dataset_preparation.ipynb
 |   |-- 02_dataset_analysis.ipynb
-|   `-- 03_baseline_cnn.ipynb
+|   |-- 03_baseline_cnn.ipynb
+|   `-- 04_resnet.ipynb
 |-- results/
 |   `-- figures/
 |-- src/
@@ -166,7 +175,8 @@ robust-ai-image-detection/
 |   |-- evaluation/
 |   |   `-- classification.py
 |   |-- models/
-|   |   `-- baseline_cnn.py
+|   |   |-- baseline_cnn.py
+|   |   `-- resnet.py
 |   `-- training/
 |       `-- engine.py
 `-- requirements.txt
@@ -179,6 +189,7 @@ robust-ai-image-detection/
 | `01_dataset_preparation.ipynb` | Sample and standardize the GenImage subset and build the dataset table |
 | `02_dataset_analysis.ipynb` | Explore class balance, generator distributions, image properties, duplicates, and visual differences |
 | `03_baseline_cnn.ipynb` | Train, validate, and evaluate the baseline CNN |
+| `04_resnet.ipynb` | Fine-tune a pretrained ResNet18 and compare it to the baseline CNN |
 
 ## Installation
 
@@ -196,6 +207,9 @@ pip install -r requirements.txt
    and `data/dataset.csv`.
 3. Run `notebooks/02_dataset_analysis.ipynb` for dataset checks and EDA.
 4. Run `notebooks/03_baseline_cnn.ipynb` for the standard baseline experiment.
+5. Run `notebooks/04_resnet.ipynb` to fine-tune ResNet18 and compare it against
+   the baseline CNN (requires step 4 to have been run first, so its saved
+   `test_metrics.json` is available for the comparison table).
 
 Raw data, processed images, the manifest, virtual environments, and model
 checkpoints are excluded from Git.
