@@ -66,12 +66,27 @@ baseline_cnn:
   early_stopping_min_delta: 0.0001
 
 # ImageNet-pretrained ResNet18.
-# Training is done in two phases: frozen backbone warmup, then full fine-tuning.
+# Two-phase training: frozen-backbone warmup followed by full fine-tuning.
 resnet:
   warmup_epochs: 3
   warmup_learning_rate: 0.001
   finetune_epochs: 20
   finetune_learning_rate: 0.00001
   weight_decay: 0.0001
+  head_dropout: 0.3
+  early_stopping_patience: 5
+  early_stopping_min_delta: 0.0001
+
+# ImageNet-pretrained Vision Transformer (via timm).
+# Two-phase training: frozen-backbone warmup followed by partial fine-tuning.
+vit:
+  model_name: vit_small_patch16_224
+  warmup_epochs: 3
+  warmup_learning_rate: 0.001
+  finetune_epochs: 20
+  finetune_learning_rate: 0.00005
+  weight_decay: 0.05
+  drop_path_rate: 0.1
+  unfreeze_last_n_blocks: 4
   early_stopping_patience: 5
   early_stopping_min_delta: 0.0001
