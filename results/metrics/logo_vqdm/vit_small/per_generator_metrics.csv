@@ -1,0 +1,2 @@
+generator,n_ai,n_real,accuracy,precision,recall,f1,roc_auc
+vqdm,1000,150,0.3634782608695652,0.958904109589041,0.28,0.43343653250773995,0.74932

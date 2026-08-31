@@ -1,0 +1,2 @@
+generator,n_ai,n_real,accuracy,precision,recall,f1,roc_auc
+biggan,1000,150,0.811304347826087,0.967741935483871,0.81,0.8818726183995645,0.89108

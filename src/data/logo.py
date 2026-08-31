@@ -1,10 +1,9 @@
-"""Leave-one-generator-out (LOGO) manifest construction.
+"""Construct leave-one-generator-out (LOGO) dataset manifests.
 
-Builds a manifest variant for testing generalization to an entirely unseen
-AI generator: the held-out generator's AI images are removed from train and
-validation -- so they cannot influence training, early stopping, or any
-other model-selection decision -- and pooled into a dedicated test set
-alongside the real test images.
+Builds manifest variants for evaluating generalization to AI generators
+that are completely unseen during training and model selection.
+Held-out generator images are removed from the training and validation splits and
+pooled into a dedicated test split alongside the real test images.
 """
 
 import pandas as pd
@@ -17,54 +16,57 @@ def list_ai_generators(manifest: pd.DataFrame) -> list[str]:
         manifest: Dataset manifest containing "label" and "generator" columns.
 
     Returns:
-        Sorted generator names, excluding "real".
+        Sorted list of AI generator names, excluding real images.
     """
     return sorted(manifest.loc[manifest["label"] == "ai", "generator"].unique())
 
 
-def build_logo_manifest(manifest: pd.DataFrame, unseen_generator: str) -> pd.DataFrame:
-    """Build a manifest variant that holds one AI generator fully unseen.
+def build_logo_manifest(manifest: pd.DataFrame, unseen_generators: str | list[str]) -> pd.DataFrame:
+    """Build a manifest with one or more AI generators fully held out.
 
-    The held-out generator's AI images -- wherever they originally sat
-    (train, val, or test) -- are relabeled into the test split, pooling all
-    of that generator's images (rather than just its original ~150 test
-    images) for a more reliable test-set estimate. Other generators'
-    original test-split AI images are dropped from the returned manifest,
-    so the LOGO test set contains only real images plus the unseen
-    generator -- not the usual seven-way test mix.
+    All AI images from the specified unseen generator(s), regardless of their
+    original split, are assigned to the test split. AI test images from all
+    other generators are removed so that the resulting test set contains only
+    real images and the held-out generator(s).
 
-    Real images and every other generator's train/val AI images are left
-    untouched, so training and model selection never see the unseen
-    generator in any form.
+    A single generator represents the standard LOGO evaluation. Multiple
+    generators can be held out for targeted experiments, such as testing
+    whether two architecturally related generators can generalize to each
+    other.
+
+    Real images and the train/validation AI images from all other generators
+    remain unchanged. Therefore, the unseen generator(s) cannot influence
+    training, early stopping, or model-selection decisions.
 
     Args:
-        manifest: Full dataset manifest (see ``AIImageDataset``), containing
-            at least "label", "generator", and "split" columns.
-        unseen_generator: Name of the AI generator to hold out, e.g.
-            "midjourney". Must be a value present in the "generator" column
-            for AI-labeled rows.
+        manifest: Full dataset manifest containing at least "label", "generator", and "split" columns.
+        unseen_generators: AI generator name to hold out, or a list of
+            generator names to hold out together. Each name must be present
+            in the manifest for AI-labeled rows.
 
     Returns:
-        A new manifest DataFrame (the input is not modified) with the
-        unseen generator's AI rows relabeled to split="test" and other
-        generators' original test-split AI rows removed.
+        A new manifest DataFrame. The input manifest is not modified. AI rows
+        belonging to the unseen generator(s) are assigned to the test split,
+        while other generators' original test-split AI rows are removed.
 
     Raises:
-        ValueError: If unseen_generator is not an AI generator present in
-            the manifest.
+        ValueError: If any specified unseen generator is not present among
+            the AI generators in the manifest.
     """
-    available_generators = list_ai_generators(manifest)
-    if unseen_generator not in available_generators:
-        raise ValueError(
-            f"Unknown unseen_generator {unseen_generator!r}; expected one of {available_generators}."
-        )
+    if isinstance(unseen_generators, str):
+        unseen_generators = [unseen_generators]
 
-    logo_manifest = manifest.copy()
+    available_generators: list[str] = list_ai_generators(manifest)
+    unknown: list[str] = [g for g in unseen_generators if g not in available_generators]
+    if unknown:
+        raise ValueError(f"Unknown unseen_generators {unknown!r}; expected values from {available_generators}.")
 
-    is_unseen_ai = (logo_manifest["label"] == "ai") & (logo_manifest["generator"] == unseen_generator)
-    is_other_generator_test_ai = (
+    logo_manifest: pd.DataFrame = manifest.copy()
+
+    is_unseen_ai: pd.Series = (logo_manifest["label"] == "ai") & (logo_manifest["generator"].isin(unseen_generators))
+    is_other_generator_test_ai: pd.Series = (
         (logo_manifest["label"] == "ai")
-        & (logo_manifest["generator"] != unseen_generator)
+        & (~logo_manifest["generator"].isin(unseen_generators))
         & (logo_manifest["split"] == "test")
     )
 
