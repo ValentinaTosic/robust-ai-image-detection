@@ -29,3 +29,5 @@ models/*.ckpt
 Thumbs.db
 .vscode/
 .idea/
+
+results/models/
