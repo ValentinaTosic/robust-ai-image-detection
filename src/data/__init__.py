@@ -7,12 +7,21 @@ The package provides:
 """
 
 from src.data.dataset import AIImageDataset, LABEL_TO_INDEX
-from src.data.loaders import build_image_transform, build_pretrained_transform, create_dataloaders
+from src.data.loaders import (
+    build_image_transform,
+    build_pretrained_transform,
+    build_vit_transform,
+    create_dataloaders,
+)
+from src.data.logo import build_logo_manifest, list_ai_generators
 
 __all__ = [
     "AIImageDataset",
     "LABEL_TO_INDEX",
     "build_image_transform",
     "build_pretrained_transform",
+    "build_vit_transform",
     "create_dataloaders",
+    "build_logo_manifest",
+    "list_ai_generators",
 ]

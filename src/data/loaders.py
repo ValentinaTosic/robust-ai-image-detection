@@ -3,11 +3,11 @@
 from pathlib import Path
 from typing import Callable
 import pandas as pd
+import timm
 import torch
 from torch.utils.data import DataLoader
 from torchvision.transforms import v2
 from src.data.dataset import AIImageDataset
-
 
 NORMALIZATION_MEAN: tuple[float, float, float] = (0.5, 0.5, 0.5)
 NORMALIZATION_STD: tuple[float, float, float] = (0.5, 0.5, 0.5)
@@ -18,7 +18,6 @@ NORMALIZATION_STD: tuple[float, float, float] = (0.5, 0.5, 0.5)
 # from a different distribution than the one used during pretraining.
 IMAGENET_MEAN: tuple[float, float, float] = (0.485, 0.456, 0.406)
 IMAGENET_STD: tuple[float, float, float] = (0.229, 0.224, 0.225)
-
 
 def build_image_transform() -> v2.Compose:
     """Build the deterministic transform used by the first CNN baseline.
@@ -38,7 +37,6 @@ def build_image_transform() -> v2.Compose:
             v2.Normalize(mean=NORMALIZATION_MEAN, std=NORMALIZATION_STD),
         ]
     )
-
 
 def build_pretrained_transform() -> v2.Compose:
     """Build the deterministic transform for ImageNet-pretrained models.
@@ -60,6 +58,36 @@ def build_pretrained_transform() -> v2.Compose:
         ]
     )
 
+def build_vit_transform(model_name: str, augment: bool = False) -> v2.Compose:
+    """Build the transform expected by a timm ViT checkpoint.
+
+    Normalization statistics are read from the selected checkpoint's
+    pretrained configuration rather than hardcoded, since different timm
+    checkpoints may use different statistics. Standardized images are already
+    224 x 224 RGB, so only tensor conversion and normalization are required.
+
+    Args:
+        model_name: timm model identifier, e.g. "vit_small_patch16_224".
+        augment: If True, apply a random horizontal flip for training-time
+            augmentation. Validation and test transforms use the default
+            ``False`` value to remain deterministic.
+
+    Returns:
+        An image transformation pipeline using the normalization statistics
+        specified by the selected pretrained checkpoint.
+    """
+    pretrained_cfg: dict = timm.get_pretrained_cfg(model_name).to_dict()
+    data_config: dict = timm.data.resolve_data_config({}, pretrained_cfg=pretrained_cfg)
+    mean: tuple[float, ...] = data_config["mean"]
+    std: tuple[float, ...] = data_config["std"]
+
+    transforms: list = [v2.RandomHorizontalFlip(p=0.5)] if augment else []
+    transforms += [
+        v2.ToImage(),
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Normalize(mean=mean, std=std),
+    ]
+    return v2.Compose(transforms)
 
 def create_dataloaders(
     manifest: pd.DataFrame | Path | str,
@@ -69,6 +97,7 @@ def create_dataloaders(
     seed: int,
     pin_memory: bool = False,
     transform_fn: Callable[[], v2.Compose] = build_image_transform,
+    train_transform_fn: Callable[[], v2.Compose] | None = None,
 ) -> dict[str, DataLoader]:
     """Create reproducible train, validation, and test DataLoaders.
 
@@ -86,9 +115,14 @@ def create_dataloaders(
         pin_memory: Whether DataLoaders should use pinned memory for faster
             host-to-device transfers when training on a compatible device.
         transform_fn: Callable that builds the image transformation applied
-            to all dataset splits. Use ``build_pretrained_transform`` for
-            ImageNet-pretrained backbones. Defaults to
-            ``build_image_transform``.
+            to the validation and test splits (and to the training split too
+            if ``train_transform_fn`` is not given). Use
+            ``build_pretrained_transform`` for ImageNet-pretrained backbones.
+            Defaults to ``build_image_transform``.
+        train_transform_fn: Optional callable that builds a separate,
+            typically augmented, transform for the training split only.
+            Defaults to ``None``, meaning the training split reuses
+            ``transform_fn`` like the other splits.
 
     Returns:
         Dictionary containing train, val, and test DataLoaders.
@@ -99,8 +133,10 @@ def create_dataloaders(
         raise ValueError("num_workers cannot be negative.")
 
     transform: v2.Compose = transform_fn()
+    train_transform: v2.Compose = train_transform_fn() if train_transform_fn is not None else transform
+    split_transforms: dict[str, v2.Compose] = {"train": train_transform, "val": transform, "test": transform}
     datasets: dict[str, AIImageDataset] = {
-        split: AIImageDataset(manifest, processed_root, split, transform)
+        split: AIImageDataset(manifest, processed_root, split, split_transforms[split])
         for split in ("train", "val", "test")
     }
 
