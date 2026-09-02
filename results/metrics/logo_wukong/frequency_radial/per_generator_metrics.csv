@@ -1,0 +1,2 @@
+generator,n_ai,n_real,accuracy,precision,recall,f1,roc_auc
+wukong,1000,150,0.4860869565217391,0.904950495049505,0.457,0.6073089700996678,0.6129
