@@ -1,0 +1,2 @@
+generator,n_ai,n_real,accuracy,precision,recall,f1,roc_auc
+midjourney,1000,150,0.47739130434782606,0.9290322580645162,0.432,0.5897610921501707,0.6732
