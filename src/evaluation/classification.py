@@ -17,6 +17,7 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
     roc_curve,
+    log_loss,
 )
 from torch import nn
 from torch.utils.data import DataLoader
@@ -138,10 +139,43 @@ def evaluate_predictions(
     return EvaluationResult(metrics, predictions, per_generator)
 
 
+def evaluate_probability_predictions(
+    rows: pd.DataFrame,
+    probabilities: np.ndarray,
+    threshold: float = 0.5,
+) -> EvaluationResult:
+    """Evaluate probabilities produced by a non-PyTorch classifier.
+
+    This keeps Logistic Regression and neural-network outputs in the same
+    result format, so their metrics, predictions, and figures can be compared
+    and saved by the same project utilities.
+    """
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("threshold must be in the range [0, 1].")
+    if len(rows) != len(probabilities):
+        raise ValueError("rows and probabilities must have the same length.")
+
+    predictions = rows[["filename", "label", "generator", "source_group"]].copy()
+    predictions["label_index"] = predictions["label"].map({"real": 0, "ai": 1}).astype(np.int64)
+    predictions["probability_ai"] = np.asarray(probabilities, dtype=np.float64)
+    predictions["prediction_index"] = (
+        predictions["probability_ai"] >= threshold
+    ).astype(np.int64)
+    predictions["prediction"] = predictions["prediction_index"].map({0: "real", 1: "ai"})
+
+    average_loss = log_loss(
+        predictions["label_index"], predictions["probability_ai"]
+    )
+    metrics = _metrics_from_frame(predictions, average_loss)
+    per_generator = _per_generator_metrics(predictions)
+    return EvaluationResult(metrics, predictions, per_generator)
+
+
 def save_evaluation_outputs(
     result: EvaluationResult,
     output_dir: Path | str,
     figures_dir: Path | str | None = None,
+    model_label: str = "Baseline CNN",
 ) -> dict[str, Path]:
     """Save metrics, predictions, and the two main evaluation figures."""
     destination = Path(output_dir)
@@ -180,7 +214,7 @@ def save_evaluation_outputs(
     )
     ax.set_xlabel("Predicted label")
     ax.set_ylabel("True label")
-    ax.set_title("Baseline CNN confusion matrix")
+    ax.set_title(f"{model_label} confusion matrix")
     fig.tight_layout()
     fig.savefig(paths["confusion_matrix"], dpi=150)
     plt.close(fig)
@@ -197,7 +231,7 @@ def save_evaluation_outputs(
     ax.plot([0, 1], [0, 1], linestyle="--", color="gray")
     ax.set_xlabel("False positive rate")
     ax.set_ylabel("True positive rate")
-    ax.set_title("Baseline CNN ROC curve")
+    ax.set_title(f"{model_label} ROC curve")
     ax.legend(loc="lower right")
     fig.tight_layout()
     fig.savefig(paths["roc_curve"], dpi=150)
