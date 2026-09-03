@@ -1,0 +1,11 @@
+comparison_case,filename,label,generator,cnn_p_ai,resnet_p_ai,vit_p_ai,radial_p_ai,hybrid_p_ai,cnn_pred,resnet_pred,vit_pred,radial_pred,hybrid_pred
+all_correct,real/adm__ILSVRC2012_val_00045398.jpg,real,real,0.3419936299324035,0.0164194665849208,0.0012380429543554,0.17607577,0.119058006,real,real,real,real,real
+all_correct,ai/biggan__554_biggan_00143.jpg,ai,biggan,0.8470874428749084,0.9310495257377625,0.9950024485588074,0.60366774,0.81671697,ai,ai,ai,ai,ai
+all_wrong,real/glide__ILSVRC2012_val_00007006.jpg,real,real,0.7301608920097351,0.9624646306037904,0.9423731565475464,0.5582369,0.6508369,ai,ai,ai,ai,ai
+all_wrong,ai/midjourney__140_midjourney_169.jpg,ai,midjourney,0.1599327623844146,0.2486694753170013,0.0046304874122142,0.435959,0.23640598,real,real,real,real,real
+cnn_wrong_others_correct,ai/midjourney__208_midjourney_88.jpg,ai,midjourney,0.2413319051265716,0.6916293501853943,0.8138325214385986,0.5053116,0.5106687,real,ai,ai,ai,ai
+cnn_wrong_others_correct,real/glide__ILSVRC2012_val_00012209.jpg,real,real,0.7134970426559448,0.2083383351564407,0.0490018799901008,0.2261326,0.46883464,ai,real,real,real,real
+frequency_correct_neural_disagreement,ai/wukong__778_wukong_image128.jpg,ai,wukong,0.4315257966518402,0.9798215627670288,0.99988853931427,0.5941063,0.5767438,real,ai,ai,ai,ai
+frequency_correct_neural_disagreement,ai/midjourney__985_midjourney_198.jpg,ai,midjourney,0.5396775603294373,0.9810669422149658,0.2302862107753753,0.54747975,0.5201955,ai,ai,real,ai,ai
+largest_probability_disagreement,ai/sdv1_5__043_sdv5_00003.jpg,ai,sdv1_5,0.7709951996803284,0.6648121476173401,0.999414086341858,0.00084580254,0.18582831,ai,ai,ai,real,real
+largest_probability_disagreement,ai/wukong__599_wukong_image128.jpg,ai,wukong,0.9858092665672302,0.8325841426849365,0.9955092668533324,0.0024326423,0.91193706,ai,ai,ai,real,ai
