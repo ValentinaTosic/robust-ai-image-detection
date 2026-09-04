@@ -134,19 +134,154 @@ reused for a fair comparison.
 
 ### Vision Transformer
 
+A pretrained Vision Transformer (`vit_small_patch16_224`, via timm) is
+fine-tuned using the same two-phase strategy as ResNet18: first, the
+classifier head is trained with the backbone frozen, followed by full
+fine-tuning with a much lower learning rate. Inputs are normalized using the
+statistics specified by the selected checkpoint's pretrained configuration,
+rather than assuming a fixed normalization scheme. The same reusable training
+and evaluation pipeline, including early stopping and checkpointing, is used
+to support a fair comparison with the CNN and ResNet18.
+
 ## Experimental setup
 
 ### Standard evaluation
 
+The baseline CNN, ResNet18, ViT, and both frequency-domain classifiers (see
+below) are each trained and evaluated once with all seven generators
+represented across the 70/15/15 train/validation/test split described above.
+Every model reuses the same evaluation pipeline -- deterministic DataLoaders,
+validation-based early stopping and checkpointing, and identical metrics
+(accuracy, precision, recall, F1, ROC-AUC), reported overall and broken down
+per generator -- so results are directly comparable across model families.
+This answers RQ1: how well each architecture distinguishes real from
+AI-generated images when every generator is present during training.
+
 ### Leave-One-Generator-Out evaluation
+
+To test generalization to a generator never seen during training,
+`src/data/logo.py` rebuilds the manifest so one AI generator's images --
+wherever they originally sat -- move entirely into the test split, while
+every other generator keeps its original train/validation/test assignment.
+Real images are unaffected. Each model is retrained (or refit, for the
+frequency classifiers) from scratch on this LOGO split and evaluated only on
+the held-out generator plus real images, so the held-out generator never
+influences training, validation, early stopping, or model selection.
+
+This is repeated once per generator for all seven generators, plus one
+deliberate follow-up that holds out `sdv1_5` and `wukong` together -- two
+architecturally related, Stable-Diffusion-lineage generators -- to test
+whether their individual generalization depends on the other remaining in
+training. Results across every fold and every model family are aggregated
+into `results/metrics/logo_summary.csv`. This answers RQ2 and RQ3: how much
+performance drops on an unseen generator, and how that drop compares across
+architectures.
 
 ## Frequency-domain analysis (stretch)
 
+Two additional classifiers are trained on hand-crafted frequency-domain
+features instead of raw pixels, to test RQ4. Each image's FFT power spectrum
+is reduced to either a 64-bin radial energy profile (`frequency_radial`) or
+that profile combined with a 16x16 log-power grid, 320 features total
+(`frequency_hybrid`), followed by a logistic regression whose regularization
+strength is selected on the validation set. Both are evaluated with the same
+standard and LOGO protocols as the other three models, so their seen and
+unseen performance is directly comparable.
+
 ## Explainability (stretch)
+
+`10_explainability.ipynb` visualizes what each model attends to when
+classifying a standard-test image -- GradCAM for the baseline CNN and
+ResNet18, attention rollout for ViT, and global/local coefficient
+contributions for both frequency-domain classifiers -- across correctly and
+incorrectly classified examples. `11_logo_explainability.ipynb` repeats this
+for three LOGO folds (`glide`, `wukong`, `midjourney`, spanning easy to hard
+for the baseline CNN), reusing the LOGO checkpoints without retraining. A
+short cross-check of both notebooks' key findings against this project's
+aggregate metrics is included in `12_final_comparison.ipynb`'s conclusions.
 
 ## Results
 
+Full tables, statistical tests, and every figure referenced below are
+produced by `notebooks/12_final_comparison.ipynb`, which loads only
+already-saved results (no retraining) and is the single source of truth for
+these numbers.
+
+**Standard (seen) evaluation** -- all seven generators represented in
+training:
+
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Baseline CNN | 0.796 | 0.789 | 0.809 | 0.799 | 0.888 |
+| Frequency (radial) | 0.649 | 0.618 | 0.778 | 0.689 | 0.705 |
+| Frequency (hybrid) | 0.708 | 0.754 | 0.617 | 0.679 | 0.795 |
+| ResNet18 | 0.819 | 0.799 | 0.852 | 0.825 | 0.906 |
+| ViT-Small | 0.890 | 0.881 | 0.902 | 0.891 | 0.957 |
+
+Every pairwise difference between models is statistically significant
+(McNemar's test on the paired predictions, p < 0.05 for all 10 pairs; nine of
+the ten at p < 0.0001), and bootstrap 95% confidence intervals on F1 are
+narrow and almost entirely non-overlapping -- this ordering is not sampling
+noise.
+
+**Leave-one-generator-out evaluation** -- recall on the held-out generator,
+by model:
+
+| Unseen generator | Baseline CNN | Frequency (radial) | Frequency (hybrid) | ResNet18 | ViT-Small |
+|---|---:|---:|---:|---:|---:|
+| BigGAN | 0.796 | 0.727 | 0.992 | 0.810 | 0.849 |
+| GLIDE | 0.870 | 0.604 | 0.979 | 0.852 | 0.899 |
+| ADM | 0.410 | 0.441 | 0.467 | 0.393 | 0.261 |
+| VQDM | 0.270 | 0.258 | 0.301 | 0.305 | 0.280 |
+| Midjourney | 0.152 | 0.432 | 0.271 | 0.380 | 0.452 |
+| Stable Diffusion v1.5 (alone) | 0.466 | 0.457 | 0.247 | 0.734 | 0.714 |
+| Wukong (alone) | 0.393 | 0.457 | 0.258 | 0.705 | 0.641 |
+| SDv1.5 + Wukong (held out jointly) | 0.069 | 0.178 | 0.092 | 0.361 | 0.346 |
+
+Measuring each fold against that *same* generator's own seen-generator score
+(rather than the pooled seven-generator average, which is confounded by
+generators differing in inherent difficulty), the average generalization gap
+over the seven standard folds ranges from 0.101 (frequency hybrid) to 0.234
+(baseline CNN) -- but the ranking by average gap does not match the ranking
+by absolute unseen recall, which is the more practically relevant measure
+(see Conclusions).
+
 ## Conclusions
+
+- **RQ1 (baseline):** all five model families detect AI-generated images
+  well when every generator is represented in training, with a clear,
+  statistically significant ordering: ViT > ResNet18 > baseline CNN >
+  frequency hybrid > frequency radial.
+- **RQ2 (generalization):** every model's performance drops on a held-out
+  generator, but the drop is not a fixed property of the task -- it ranges
+  from near-total retention (BigGAN, GLIDE) to near-total collapse (SDv1.5 +
+  Wukong held out jointly), depending entirely on the generator.
+- **RQ3 (architecture):** no single architecture is uniformly best, and the
+  ranking flips depending on the metric. Frequency hybrid has the smallest
+  average generalization gap but the least consistent absolute performance;
+  ResNet18 and ViT have the best absolute unseen recall on most folds despite
+  a larger average gap, because their seen-generator scores start much
+  higher. Parameter count does not predict either seen performance or
+  generalization on its own.
+- **RQ4 (frequency information):** adding frequency-domain features helps
+  decisively, but only for generators whose artifacts are periodic or
+  low-level enough to appear directly in a power spectrum (BigGAN, GLIDE, and
+  to a lesser extent ADM) -- on every other generator, especially the
+  architecturally related Stable Diffusion / Wukong pair, it does not help
+  and often actively hurts.
+
+Three distinct generalization mechanisms explain the LOGO results as a
+whole: **intrinsic, generator-agnostic artifacts** (BigGAN, GLIDE) that
+transfer well to nearly every model; **architectural lineage** (Stable
+Diffusion v1.5, Wukong), where generalization depends entirely on a
+near-identical relative remaining in training, and only the fine-tuned deep
+networks pick up on it; and generators with **neither mechanism** (ADM,
+VQDM, Midjourney), where every model struggles. Robust detection across
+unseen generative models is therefore not solved by any single architecture
+or feature set -- the practical implication is that combining
+representations, or an explicit generator-family-aware strategy, is a more
+promising direction than optimizing one model in isolation. Full reasoning
+and every supporting number are in `notebooks/12_final_comparison.ipynb`.
 
 ## Repository structure
 
@@ -163,20 +298,37 @@ robust-ai-image-detection/
 |   |-- 01_dataset_preparation.ipynb
 |   |-- 02_dataset_analysis.ipynb
 |   |-- 03_baseline_cnn.ipynb
-|   `-- 04_resnet.ipynb
+|   |-- 04_resnet.ipynb
+|   |-- 05_vit.ipynb
+|   |-- 06_leave_one_generator_out.ipynb
+|   |-- 07_frequency_analysis.ipynb
+|   |-- 08_frequency_models.ipynb
+|   |-- 09_logo_cnn_frequency.ipynb
+|   |-- 10_explainability.ipynb
+|   |-- 11_logo_explainability.ipynb
+|   `-- 12_final_comparison.ipynb
 |-- results/
-|   `-- figures/
+|   |-- checkpoints/                # local, ignored by Git
+|   |-- models/                     # fitted frequency classifiers, ignored by Git
+|   |-- figures/
+|   `-- metrics/
 |-- src/
 |   |-- data/
 |   |   |-- config.py
 |   |   |-- dataset.py
 |   |   |-- loaders.py
+|   |   |-- logo.py
 |   |   `-- standardize.py
 |   |-- evaluation/
-|   |   `-- classification.py
+|   |   |-- classification.py
+|   |   `-- explainability.py
+|   |-- features/
+|   |   `-- frequency.py
 |   |-- models/
 |   |   |-- baseline_cnn.py
-|   |   `-- resnet.py
+|   |   |-- heads.py
+|   |   |-- resnet.py
+|   |   `-- vit.py
 |   `-- training/
 |       `-- engine.py
 `-- requirements.txt
@@ -190,6 +342,14 @@ robust-ai-image-detection/
 | `02_dataset_analysis.ipynb` | Explore class balance, generator distributions, image properties, duplicates, and visual differences |
 | `03_baseline_cnn.ipynb` | Train, validate, and evaluate the baseline CNN |
 | `04_resnet.ipynb` | Fine-tune a pretrained ResNet18 and compare it to the baseline CNN |
+| `05_vit.ipynb` | Fine-tune a pretrained Vision Transformer and compare all three models |
+| `06_leave_one_generator_out.ipynb` | LOGO evaluation for ResNet18 and ViT, one generator held out per run |
+| `07_frequency_analysis.ipynb` | Exploratory FFT analysis: mean power spectra and radial profiles, real vs. each generator |
+| `08_frequency_models.ipynb` | Fit and evaluate the frequency-domain classifiers (`frequency_radial`, `frequency_hybrid`) on the standard split |
+| `09_logo_cnn_frequency.ipynb` | LOGO evaluation for the baseline CNN and both frequency-domain classifiers |
+| `10_explainability.ipynb` | GradCAM / attention-rollout / frequency-coefficient explanations on the standard test set |
+| `11_logo_explainability.ipynb` | The same explanations for three LOGO folds (`glide`, `wukong`, `midjourney`) |
+| `12_final_comparison.ipynb` | Final seen/unseen comparison, statistical significance, generalization gap, explainability cross-check, and RQ1-RQ4 conclusions across all five model families |
 
 ## Installation
 
@@ -210,6 +370,25 @@ pip install -r requirements.txt
 5. Run `notebooks/04_resnet.ipynb` to fine-tune ResNet18 and compare it against
    the baseline CNN (requires step 4 to have been run first, so its saved
    `test_metrics.json` is available for the comparison table).
+6. Run `notebooks/05_vit.ipynb` to fine-tune a Vision Transformer and compare
+   all three models (uses steps 4 and 5's saved `test_metrics.json` files if
+   available; skips whichever model isn't saved yet).
+7. Run `notebooks/06_leave_one_generator_out.ipynb` once per generator
+   (change `UNSEEN_GENERATORS` and rerun) to LOGO-evaluate ResNet18 and ViT.
+   Standard coverage is all seven generators individually, plus one joint
+   `sdv1_5`+`wukong` follow-up run.
+8. Run `notebooks/08_frequency_models.ipynb` to fit the frequency-domain
+   classifiers on the standard split (`07_frequency_analysis.ipynb` is
+   exploratory and optional).
+9. Run `notebooks/09_logo_cnn_frequency.ipynb` the same way as step 7, for
+   the baseline CNN and both frequency classifiers.
+10. Run `notebooks/10_explainability.ipynb` and
+    `notebooks/11_logo_explainability.ipynb` for GradCAM / attention /
+    frequency-coefficient visualizations on the standard and LOGO test sets
+    (stretch goal; reuses the checkpoints from steps 4-9 without retraining).
+11. Run `notebooks/12_final_comparison.ipynb` last -- it only reads results
+    already saved by the steps above and produces the final comparison
+    tables, statistical tests, and RQ1-RQ4 conclusions summarized above.
 
 Raw data, processed images, the manifest, virtual environments, and model
 checkpoints are excluded from Git.
